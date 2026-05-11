@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>滅火器巡檢</title>
+  <title>消防設備巡檢</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,7 +38,6 @@
       cursor: pointer; transition: background 0.15s; letter-spacing: 0.02em;
     }
     .btn-primary:active { background: #c53030; }
-    .btn-primary:disabled { background: #fc8181; cursor: not-allowed; }
 
     /* ── Scan ── */
     #scan-screen { gap: 14px; max-width: 480px; margin: 0 auto; width: 100%; }
@@ -55,12 +54,7 @@
       font-size: 13px; cursor: pointer; padding: 6px;
     }
 
-    #reader {
-      border-radius: 16px; overflow: hidden;
-      background: #1a202c;
-      min-height: 260px;
-    }
-    /* hide the html5-qrcode default UI clutter */
+    #reader { border-radius: 16px; overflow: hidden; background: #1a202c; min-height: 260px; }
     #reader img { display: none !important; }
     #reader__dashboard_section_csr span { display: none; }
 
@@ -87,6 +81,11 @@
       border-radius: 20px; font-size: 11px; font-weight: 700;
       padding: 2px 8px;
     }
+    .pending-badge {
+      background: #f6ad55; color: #744210;
+      border-radius: 20px; font-size: 11px; font-weight: 700;
+      padding: 2px 8px; display: none;
+    }
 
     .log-list { display: flex; flex-direction: column; gap: 8px; }
     .log-item {
@@ -95,15 +94,78 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.07);
     }
     .log-location { font-weight: 600; font-size: 15px; }
+    .log-type { font-size: 11px; color: #a0aec0; margin-top: 2px; }
     .log-time { font-size: 12px; color: #718096; margin-top: 3px; }
     .sync-dot {
-      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-      margin-left: 12px;
+      width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-left: 12px;
     }
     .sync-dot.ok   { background: #68d391; }
     .sync-dot.wait { background: #f6ad55; }
 
     .empty-state { text-align: center; color: #cbd5e0; padding: 30px 0; font-size: 14px; }
+
+    /* ── Checklist Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.55);
+      display: none; align-items: flex-end;
+      z-index: 200;
+    }
+    .modal-overlay.active { display: flex; }
+
+    .modal-sheet {
+      background: white;
+      border-radius: 24px 24px 0 0;
+      padding: 20px 20px 44px;
+      width: 100%; max-height: 85vh; overflow-y: auto;
+    }
+
+    .modal-handle {
+      width: 40px; height: 4px; background: #e2e8f0;
+      border-radius: 2px; margin: 0 auto 20px;
+    }
+
+    .modal-location { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+
+    .modal-type-badge {
+      display: inline-block; padding: 4px 14px;
+      border-radius: 20px; font-size: 12px; font-weight: 700; margin-bottom: 20px;
+    }
+    .modal-type-badge.hydrant      { background: #ebf8ff; color: #2b6cb0; }
+    .modal-type-badge.extinguisher { background: #fff5f5; color: #c53030; }
+
+    .checklist-label {
+      font-size: 12px; font-weight: 700; color: #a0aec0;
+      text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px;
+    }
+
+    .check-items { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+
+    .check-item {
+      display: flex; align-items: flex-start; gap: 14px;
+      background: #f7f8fa; border-radius: 14px; padding: 16px;
+      cursor: pointer; border: 2px solid transparent;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .check-item:has(input:checked) { background: #f0fff4; border-color: #68d391; }
+
+    .check-item input[type="checkbox"] {
+      width: 22px; height: 22px; flex-shrink: 0;
+      margin-top: 2px; accent-color: #38a169;
+    }
+    .check-cn { font-size: 15px; font-weight: 600; color: #2d3748; display: block; }
+    .check-vn { font-size: 12px; color: #a0aec0; margin-top: 3px; display: block; }
+
+    .modal-btn-row { display: flex; gap: 10px; }
+    .btn-cancel {
+      flex: 1; padding: 14px; font-size: 15px; font-weight: 600;
+      background: #edf2f7; color: #718096; border: none; border-radius: 12px; cursor: pointer;
+    }
+    .btn-submit {
+      flex: 2; padding: 14px; font-size: 15px; font-weight: 600;
+      background: #38a169; color: white; border: none; border-radius: 12px; cursor: pointer;
+    }
+    .btn-submit:active { background: #276749; }
   </style>
 </head>
 <body>
@@ -111,51 +173,90 @@
 <!-- ══ 設定畫面 ══ -->
 <div id="setup-screen" class="screen active">
   <div class="hero">
-    <div class="hero-icon">🧯</div>
-    <h1>滅火器巡檢</h1>
-    <p>掃描現場 QR Code，自動記錄時間地點</p>
+    <div class="hero-icon">🧯🚒</div>
+    <h1>Kiểm tra PCCC</h1>
+    <p>Quét mã QR tại hiện trường để ghi lại kết quả kiểm tra</p>
   </div>
-
   <div>
-    <label for="inspector-input">巡檢人員姓名</label>
-    <input type="text" id="inspector-input" placeholder="請輸入姓名" maxlength="20" autocomplete="off">
+    <label for="inspector-input">Tên nhân viên kiểm tra</label>
+    <input type="text" id="inspector-input" placeholder="Nhập tên của bạn" maxlength="20" autocomplete="off">
   </div>
-
-  <button class="btn-primary" onclick="startInspection()">開始巡檢</button>
+  <button class="btn-primary" onclick="startInspection()">Bắt đầu kiểm tra</button>
 </div>
 
 <!-- ══ 掃描畫面 ══ -->
 <div id="scan-screen" class="screen">
   <div class="top-bar">
-    <div class="inspector-chip">巡檢人：<span id="name-display"></span></div>
-    <button class="btn-change" onclick="changeInspector()">更換</button>
+    <div class="inspector-chip">Nhân viên：<span id="name-display"></span></div>
+    <button class="btn-change" onclick="changeInspector()">Đổi</button>
   </div>
 
   <div id="reader"></div>
 
-  <div id="status-bar" class="status-bar idle">請將鏡頭對準 QR Code</div>
+  <div id="status-bar" class="status-bar idle">Hướng camera vào mã QR</div>
 
   <div class="section-header">
-    今日記錄 <span class="count-badge" id="scan-count">0</span>
+    Hôm nay <span class="count-badge" id="scan-count">0</span>
+    <span class="pending-badge" id="pending-badge"></span>
+    <button id="btn-sync" onclick="manualSync()" style="display:none; margin-left:auto; background:#f6ad55; color:#744210; border:none; border-radius:20px; font-size:11px; font-weight:700; padding:4px 12px; cursor:pointer;">↑ 立即同步</button>
+    <button onclick="clearRecords()" style="margin-left:8px; background:#fed7d7; color:#c53030; border:none; border-radius:20px; font-size:11px; font-weight:700; padding:4px 12px; cursor:pointer;">🗑 清除</button>
   </div>
 
   <div id="log-list" class="log-list">
-    <div class="empty-state">尚未掃描任何點位</div>
+    <div class="empty-state">Chưa quét điểm nào</div>
+  </div>
+</div>
+
+<!-- ══ 核查表 Modal ══ -->
+<div id="checklist-modal" class="modal-overlay">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-location" id="modal-location"></div>
+    <div class="modal-type-badge" id="modal-type-badge"></div>
+    <div class="checklist-label">Danh mục kiểm tra</div>
+    <div class="check-items" id="check-items"></div>
+    <div class="modal-btn-row">
+      <button class="btn-cancel" onclick="closeModal()">Hủy</button>
+      <button class="btn-submit" onclick="submitChecklist()">Xác nhận ✓</button>
+    </div>
   </div>
 </div>
 
 <script>
-  // ──────────────────────────────────────────
-  //  ★ 請將下方換成你的 Google Apps Script 網址
-  // ──────────────────────────────────────────
-  const SHEET_URL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE';
+  const SHEET_URL = 'https://script.google.com/macros/s/AKfycby7ycf25_8u6JjjQeakdzridWWJhOI5HshAcS0pxExMlTT9Wv9gnZl23se7ci8Cg-6zQA/exec';
+  const DEBOUNCE_MS = 2000;
 
-  // 同一個 QR Code 多久內不重複記錄（毫秒）
-  const DEBOUNCE_MS = 4000;
+  const CHECKLISTS = {
+    '消防栓': [
+      { cn: '門可開、無障礙物', vn: 'Có thể mở cửa, không có chướng ngại vật' },
+      { cn: '有水帶、噴頭',    vn: 'Có vòi phun nước hay không' },
+      { cn: '外箱清潔',        vn: 'Vệ sinh thùng bên ngoài' }
+    ],
+    '滅火器': [
+      { cn: '壓力表正常', vn: 'Đồng hồ áp suất bình thường' }
+    ]
+  };
 
   let scanner = null;
   let lastCode = '';
   let lastTime = 0;
+  let whitelist = [];
+  let pendingLocation = '';
+  let pendingType = '';
+
+  // ── 白名單 ──
+  async function loadWhitelist() {
+    const cached = localStorage.getItem('whitelist_cache');
+    if (cached) whitelist = JSON.parse(cached);
+    try {
+      const res = await fetch(SHEET_URL + '?action=whitelist');
+      const json = await res.json();
+      if (json.status === 'ok' && json.whitelist) {
+        whitelist = json.whitelist;
+        localStorage.setItem('whitelist_cache', JSON.stringify(whitelist));
+      }
+    } catch (e) { /* 使用快取版本 */ }
+  }
 
   // ── 啟動 ──
   function startInspection() {
@@ -165,7 +266,9 @@
     document.getElementById('name-display').textContent = name;
     showScreen('scan-screen');
     renderLog();
+    updatePendingBadge();
     initScanner();
+    syncPending();
   }
 
   function changeInspector() {
@@ -187,42 +290,102 @@
       { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.0 },
       onScan,
       () => {}
-    ).catch(err => {
-      setStatus('error', '無法開啟相機，請確認已授權相機權限');
-    });
+    ).catch(() => setStatus('error', 'Không thể mở camera, vui lòng kiểm tra quyền truy cập'));
   }
 
   // ── 掃描成功 ──
   function onScan(text) {
     const now = Date.now();
-
-    // 相機連續觸發防抖：800ms 內同個值直接忽略
     if (text === lastCode && now - lastTime < DEBOUNCE_MS) return;
     if (now - lastTime < 800) return;
-
     lastCode = text;
     lastTime = now;
 
-    // 今天已掃過？擋掉
-    const already = getLogs().find(r => r.location === text);
-    if (already) {
-      setStatus('warn', `⚠ 此點今日已於 ${already.timestamp.slice(-8)} 巡檢過`);
-      setTimeout(() => setStatus('idle', '請將鏡頭對準 QR Code'), 3500);
+    if (whitelist.length > 0 && !whitelist.includes(text)) {
+      setStatus('error', 'Mã QR này không có trong danh sách kiểm tra');
+      setTimeout(() => setStatus('idle', 'Hướng camera vào mã QR'), 3000);
       return;
     }
 
+    let type = null;
+    if (text.startsWith('消防栓')) type = '消防栓';
+    else if (text.startsWith('滅火器')) type = '滅火器';
+    else {
+      setStatus('error', 'Không nhận dạng được loại thiết bị');
+      setTimeout(() => setStatus('idle', 'Hướng camera vào mã QR'), 3000);
+      return;
+    }
+
+    const already = getLogs().find(r => r.location === text);
+    if (already) {
+      setStatus('warn', `⚠ Điểm này đã kiểm tra lúc ${already.timestamp.slice(-8)} hôm nay`);
+      setTimeout(() => setStatus('idle', 'Hướng camera vào mã QR'), 3500);
+      return;
+    }
+
+    showModal(text, type);
+  }
+
+  // ── 核查表 Modal ──
+  function showModal(location, type) {
+    pendingLocation = location;
+    pendingType = type;
+
+    document.getElementById('modal-location').textContent = location;
+    const badge = document.getElementById('modal-type-badge');
+    badge.textContent = type;
+    badge.className = 'modal-type-badge ' + (type === '消防栓' ? 'hydrant' : 'extinguisher');
+
+    const items = CHECKLISTS[type];
+    document.getElementById('check-items').innerHTML = items.map((item, i) => `
+      <label class="check-item">
+        <input type="checkbox" id="chk-${i}">
+        <div>
+          <span class="check-cn">${esc(item.cn)}</span>
+          <span class="check-vn">${esc(item.vn)}</span>
+        </div>
+      </label>
+    `).join('');
+
+    document.getElementById('checklist-modal').classList.add('active');
+    try { scanner.pause(true); } catch(e) {}
+  }
+
+  function closeModal() {
+    document.getElementById('checklist-modal').classList.remove('active');
+    pendingLocation = '';
+    pendingType = '';
+    lastCode = '';
+    lastTime = 0;
+    try { scanner.resume(); } catch(e) {}
+  }
+
+  function submitChecklist() {
+    const items = CHECKLISTS[pendingType];
+    const checklist = items.map((_, i) => document.getElementById(`chk-${i}`).checked);
+
     const ts = new Date().toLocaleString('zh-TW', {
-      timeZone: 'Asia/Taipei',
+      timeZone: 'Asia/Ho_Chi_Minh',
       year: 'numeric', month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit', second: '2-digit',
       hour12: false
     });
-    const inspector = localStorage.getItem('inspector') || '未知';
-    const record = { inspector, location: text, timestamp: ts, synced: false, id: now };
 
+    const record = {
+      id: Date.now(),
+      inspector: localStorage.getItem('inspector') || '未知',
+      location: pendingLocation,
+      type: pendingType,
+      timestamp: ts,
+      checklist,
+      synced: false
+    };
+
+    closeModal();
     saveLocal(record);
     renderLog();
-    setStatus('sending', '✅ 掃描成功，上傳中...');
+    updatePendingBadge();
+    setStatus('sending', 'Đã lưu, đang tải lên...');
     upload(record);
   }
 
@@ -246,17 +409,32 @@
     const item = logs.find(r => r.id === id);
     if (item) { item.synced = true; localStorage.setItem(todayKey(), JSON.stringify(logs)); }
     renderLog();
+    updatePendingBadge();
   }
 
-  // ── 上傳到 Google Sheets ──
+  function getPendingCount() {
+    return getLogs().filter(r => !r.synced).length;
+  }
+
+  function updatePendingBadge() {
+    const n = getPendingCount();
+    const badge = document.getElementById('pending-badge');
+    const btn = document.getElementById('btn-sync');
+    if (badge) {
+      badge.textContent = `Chờ đồng bộ ${n}`;
+      badge.style.display = n > 0 ? 'inline-block' : 'none';
+    }
+    if (btn) btn.style.display = n > 0 ? 'inline-block' : 'none';
+  }
+
+  // ── 上傳 ──
   async function upload(record) {
-    if (SHEET_URL === 'https://script.google.com/macros/s/AKfycby7ycf25_8u6JjjQeakdzridWWJhOI5HshAcS0pxExMlTT9Wv9gnZl23se7ci8Cg-6zQA/exec') {
-      setStatus('warn', '⚠ 尚未設定 Google Apps Script 網址，資料僅存本機');
-      setTimeout(() => setStatus('idle', '請將鏡頭對準 QR Code'), 3000);
+    if (!navigator.onLine) {
+      setStatus('warn', `Ngoại tuyến, đã lưu máy (chờ đồng bộ ${getPendingCount()} bản ghi)`);
+      setTimeout(() => setStatus('idle', 'Hướng camera vào mã QR'), 3000);
       return;
     }
     try {
-      // text/plain 不觸發 CORS preflight，可以正常讀到 Apps Script 回應
       const res = await fetch(SHEET_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain' },
@@ -265,17 +443,48 @@
       const json = await res.json();
       if (json.status === 'ok') {
         markSynced(record.id);
-        setStatus('success', `☁ 已確認寫入試算表：${record.location}`);
+        setStatus('success', `☁ Đã tải lên: ${record.location}`);
       } else {
-        setStatus('error', `⚠ 試算表回傳錯誤：${json.message || '未知'}`);
+        setStatus('error', `⚠ Tải lên thất bại: ${json.message || 'Lỗi không xác định'}`);
       }
     } catch {
-      setStatus('error', '⚠ 上傳失敗，資料已存本機，請確認網路或 Script 網址');
+      setStatus('warn', `Lỗi mạng, đã lưu máy (chờ đồng bộ ${getPendingCount()} bản ghi)`);
     }
-    setTimeout(() => setStatus('idle', '請將鏡頭對準 QR Code'), 3500);
+    setTimeout(() => setStatus('idle', 'Hướng camera vào mã QR'), 3500);
   }
 
-  // ── 渲染記錄列表 ──
+  async function syncPending() {
+    const pending = getLogs().filter(r => !r.synced);
+    if (pending.length === 0) return;
+    setStatus('sending', `Đang đồng bộ ${pending.length} bản ghi...`);
+    for (const record of pending) {
+      await upload(record);
+    }
+  }
+
+  async function manualSync() {
+    const btn = document.getElementById('btn-sync');
+    if (btn) btn.textContent = '同步中...';
+    await syncPending();
+    if (btn) btn.textContent = '↑ 立即同步';
+  }
+
+  function clearRecords() {
+    const pwd = prompt('Nhập mật khẩu để xóa hồ sơ hôm nay:');
+    if (pwd === null) return;
+    if (pwd !== '1234') {
+      alert('Mật khẩu sai');
+      return;
+    }
+    localStorage.removeItem(todayKey());
+    renderLog();
+    updatePendingBadge();
+    setStatus('idle', 'Hướng camera vào mã QR');
+  }
+
+  window.addEventListener('online', syncPending);
+
+  // ── 渲染記錄 ──
   function renderLog() {
     const logs = getLogs();
     const list = document.getElementById('log-list');
@@ -289,6 +498,7 @@
       <div class="log-item">
         <div>
           <div class="log-location">${esc(r.location)}</div>
+          <div class="log-type">${esc(r.type || '')}</div>
           <div class="log-time">${esc(r.timestamp)}</div>
         </div>
         <div class="sync-dot ${r.synced ? 'ok' : 'wait'}" title="${r.synced ? '已同步' : '等待同步'}"></div>
@@ -306,13 +516,14 @@
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
-  // 進入頁面時還原姓名
+  // ── 初始化 ──
   const saved = localStorage.getItem('inspector');
   if (saved) document.getElementById('inspector-input').value = saved;
-
   document.getElementById('inspector-input').addEventListener('keydown', e => {
     if (e.key === 'Enter') startInspection();
   });
+
+  loadWhitelist();
 </script>
 </body>
 </html>
