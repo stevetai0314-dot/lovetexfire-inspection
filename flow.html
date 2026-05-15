@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>消防巡檢 - 系統流程圖</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 24px; background: #f0f2f5; margin: 0; }
+    h1 { color: #d32f2f; margin-bottom: 4px; }
+    .subtitle { color: #888; font-size: 14px; margin-bottom: 24px; }
+    .card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    .card h2 { color: #333; margin-top: 0; font-size: 16px; border-left: 4px solid #d32f2f; padding-left: 10px; }
+    .notes { background: #fce8e8; border-radius: 8px; padding: 16px; }
+    .notes h3 { color: #d32f2f; margin-top: 0; font-size: 14px; }
+    .notes ul { margin: 0; padding-left: 20px; font-size: 13px; color: #333; }
+    .notes li { margin-bottom: 6px; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: bold; margin-right: 4px; }
+    .tag-red { background: #fce8e8; color: #d32f2f; }
+    .tag-green { background: #e6f4ea; color: #1e8e3e; }
+    .tag-orange { background: #fce8b2; color: #e65100; }
+  </style>
+</head>
+<body>
+  <h1>消防巡檢系統 系統流程圖</h1>
+  <p class="subtitle">lovetexfire-inspection · GitHub Pages + Google Apps Script + Google Sheets</p>
+
+  <div class="card">
+    <h2>巡檢主流程</h2>
+    <div class="mermaid">
+graph TD
+    A([開啟頁面]) --> B[點擊掃描按鈕]
+    B --> C[啟動相機\nhtml5-qrcode]
+    C --> D[掃描 QR Code]
+    D --> E{白名單驗證}
+    E -- 不在清單 --> F[顯示錯誤訊息]
+    F --> D
+    E -- 驗證通過 --> G{設備類型判斷}
+    G -- 消防栓\n消防栓-1F-走廊A --> H[顯示 3 項檢查清單]
+    G -- 滅火器\n滅火器-1F-走廊A --> I[顯示 1 項檢查清單]
+    H & I --> J[填寫檢查結果]
+    J --> K[點送出]
+    K --> L{網路狀態}
+    L -- 有網路 --> M[POST to GAS]
+    L -- 無網路 --> N[存 localStorage\nsynced: false]
+    N --> O([上線後 syncPending 補傳])
+    M --> P[(Google Sheets\n消防栓 / 滅火器 分頁)]
+    O --> P
+    P --> Q([顯示完成\n準備下一個])
+
+    style E fill:#fce8e8,stroke:#d32f2f
+    style G fill:#fce8e8,stroke:#d32f2f
+    style H fill:#e8f0fe,stroke:#1a73e8
+    style I fill:#e6f4ea,stroke:#1e8e3e
+    style N fill:#fff3e0,stroke:#ffb74d
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>離線同步流程</h2>
+    <div class="mermaid">
+graph LR
+    A[送出紀錄] --> B{navigator.onLine?}
+    B -- true --> C[直接上傳]
+    B -- false --> D[存 localStorage\nsynced:false]
+    C -- 成功 --> E[標記 synced:true]
+    D --> F([顯示 待同步 X 筆])
+    G([window.online 事件]) --> H[syncPending]
+    H --> I[篩選 synced:false 的紀錄]
+    I --> J[逐筆上傳]
+    J --> K[標記 synced:true]
+    K --> L([更新 badge])
+
+    style D fill:#fff3e0,stroke:#ffb74d
+    style F fill:#fff3e0,stroke:#ffb74d
+    </div>
+  </div>
+
+  <div class="card notes">
+    <h3>重點說明</h3>
+    <ul>
+      <li><span class="tag tag-red">白名單驗證</span> QR Code 必須符合命名規則才能通過，防止掃到不相關的 QR Code</li>
+      <li><span class="tag tag-green">設備類型</span> 從 QR Code 前綴自動判斷（消防栓 / 滅火器），顯示不同數量的檢查項目</li>
+      <li><span class="tag tag-orange">離線策略</span> 用 synced flag 標記而非刪除，可在頁面上顯示完整歷史紀錄包含未同步項目</li>
+      <li>介面為越南文，後端文件為中文，GAS 以台灣時區（UTC+7）記錄時間戳記</li>
+      <li>消防栓和滅火器分別寫入不同的 Google Sheets 工作表分頁</li>
+    </ul>
+  </div>
+
+  <script>mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { curve: 'basis' } });</script>
+</body>
+</html>
