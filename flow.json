@@ -1,0 +1,45 @@
+{
+  "app": "lovetexfire-inspection",
+  "description": "工廠消防設備巡檢系統，QR Code 掃描觸發，越南文介面",
+  "url": "https://stevetai0314-dot.github.io/lovetexfire-inspection/",
+  "tech": {
+    "frontend": "Vanilla HTML/JS + html5-qrcode v2.3.8, GitHub Pages",
+    "backend": "Google Apps Script",
+    "storage": "Google Sheets + localStorage (synced flag)"
+  },
+  "equipment_types": [
+    {
+      "type": "消防栓",
+      "qr_prefix": "消防栓-",
+      "qr_example": "消防栓-1F-走廊A",
+      "checklist_items": 3,
+      "sheet": "消防栓"
+    },
+    {
+      "type": "滅火器",
+      "qr_prefix": "滅火器-",
+      "qr_example": "滅火器-1F-走廊A",
+      "checklist_items": 1,
+      "sheet": "滅火器"
+    }
+  ],
+  "qr_validation": {
+    "method": "whitelist",
+    "reject_action": "顯示錯誤訊息，等待重新掃描"
+  },
+  "offline_queue": {
+    "strategy": "synced-flag",
+    "note": "紀錄保留在 localStorage，用 synced:false/true 標記狀態，可顯示歷史",
+    "auto_sync_on": "window.online",
+    "manual_sync": "manualSync() 按鈕"
+  },
+  "gas": {
+    "routing": "由設備類型決定寫入哪個工作表",
+    "timezone": "UTC+7 Vietnam",
+    "sheets": {
+      "消防栓": "消防栓巡檢紀錄",
+      "滅火器": "滅火器巡檢紀錄"
+    }
+  },
+  "languages": ["vi"]
+}
